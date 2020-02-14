@@ -1,10 +1,10 @@
 /* @license
- * 
+ *
  * WebBluetooth Cordova Plugin
  * Copyright (c) 2017 Thomas Zachariah
  *
  * Includes: BLE Abstraction Tool, Copyright (c) 2016 Rob Moran
- * 
+ *
  * The MIT License (MIT)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -290,17 +290,11 @@
 
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
-        // AMD. Register as an anonymous module.
-        if (root.navigator.bluetooth) {
-            // Return existing web-bluetooth
-            define(root.navigator.bluetooth);
-        } else {
-            define(['es6-promise', 'es6-map', 'bluetooth.helpers'], factory);
-        }
+        define(['es6-promise', 'es6-map', 'bluetooth.helpers'], factory);
     } else {
         // Browser globals with support for web workers (root is window)
         // Assume Promise exists or has been poly-filled
-        root.bleat = root.navigator.bluetooth || factory(root.Promise, root.Map, root.bleatHelpers);
+        root.bleat = factory(root.Promise, root.Map, root.bleatHelpers);
     }
 }(this, function(Promise, Map, helpers) {
     "use strict";
@@ -482,7 +476,7 @@
         this._handle = null;
         this._allowedServices = [];
 
-        this.id = "unknown"; 
+        this.id = "unknown";
         this.name = null;
         this.adData = {
             appearance: null,

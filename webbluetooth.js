@@ -393,6 +393,8 @@
     }
 
     var scanner = null;
+    var scanning = false;
+    var removeTimedoutDevicesInterval = null;
     function requestDevice(options) {
         return new Promise(function(resolve, reject) {
             if (scanner !== null) return reject("requestDevice error: request in progress");
@@ -436,6 +438,71 @@
                 reject("requestDevice error: no devices found");
             };
 
+            // START: extension to enable device picker on vortex mobile app
+
+            // list of devices found with adapter.startScan(...)
+            var devicesFound = [];
+
+            // invokes callback with list of devices and reverse callback to either
+            // select a device or cancel the selection
+            var onDevicesFound = function () {
+              if (options.onDevicesFound) {
+                options.onDevicesFound({
+                  devices: devicesFound,
+                  select: function (deviceInfo) {
+                    cancelRequest()
+                    .then(function() {
+                      var bluetoothDevice = new BluetoothDevice(deviceInfo);
+                      resolve(bluetoothDevice);
+                    });
+                  },
+                  cancel: function () {
+                    cancelRequest()
+                    .then(function () {
+                      reject("requestDevice error: select canceled");
+                    });
+                  }
+                })
+              }
+            };
+
+            // removes devices from the list that haven't advertised since the deviceTimeout option (in ms)
+            var removeTimedoutDevices = function () {
+              if (options.deviceTimeout) {
+                var now = Date.now();
+                devicesFound = devicesFound.filter(function (deviceInfo) {
+                  return now - deviceInfo.lastFound <= options.deviceTimeout;
+                });
+              }
+            };
+
+            if (options.onDevicesFound) {
+              // check for devices that are no longer advertising every 1 second
+              if (options.deviceTimeout) {
+                removeTimedoutDevicesInterval = setInterval(function () {
+                  var numDevicesFound = devicesFound.length;
+                  removeTimedoutDevices();
+                  if (numDevicesFound !== devicesFound.length) {
+                    onDevicesFound();
+                  }
+                }, 1000);
+              }
+
+              // send initial empty list so that ui displays on mobile app (with cancel button)
+              options.onDevicesFound({
+                devices: [],
+                select: function () {},
+                cancel: function () {
+                  cancelRequest()
+                  .then(function () {
+                    reject("requestDevice error: select canceled");
+                  });
+                }
+              });
+            }
+
+            // END: extension to enable device picker on vortex mobile app
+
             adapter.startScan(searchUUIDs, function(deviceInfo) {
 
                 // filter devices if filters specified
@@ -444,6 +511,32 @@
                 }
 
                 if (deviceInfo) {
+                  // START: extension to enable device picker on vortex mobile app
+
+                  if (options.onDevicesFound) {
+                    // update the rssi value of an existing device and set the last found timestamp
+                    // on existing devices or new devices so they can be filtered out in removeTimedoutDevices()
+                    var existingDevice = devicesFound.find((device) => device.id === deviceInfo.id);
+                    if (existingDevice) {
+                      existingDevice.lastFound = Date.now();
+                      if (deviceInfo.adData) {
+                        existingDevice.adData = existingDevice.adData || {};
+                        existingDevice.adData.rssi = deviceInfo.adData.rssi;
+                      }
+                    } else {
+                      deviceInfo.lastFound = Date.now();
+                      devicesFound.push(deviceInfo);
+                    }
+
+                    // quick filter of timed out devices so we have a single update on the mobile app
+                    removeTimedoutDevices();
+
+                    // callback to the mobile app with the new device list
+                    onDevicesFound();
+                  } else {
+
+                  // END: extension to enable device picker on vortex mobile app
+
                     var bluetoothDevice = new BluetoothDevice(deviceInfo);
                     if (!options.deviceFound || options.deviceFound(bluetoothDevice)) {
                         cancelRequest()
@@ -451,23 +544,30 @@
                             resolve(bluetoothDevice);
                         });
                     }
+                  }
                 }
             }, function() {
-                scanner = setTimeout(function() {
-                    cancelRequest()
-                    .then(completeFn);
-                }, scanTime);
+                scanning = true;
+                if (scanTime !== -1) {
+                  scanner = setTimeout(function() {
+                      cancelRequest()
+                      .then(completeFn);
+                  }, scanTime);
+                }
             }, wrapReject(reject, "requestDevice error"));
         });
     }
     function cancelRequest() {
         return new Promise(function(resolve, reject) {
-            if (scanner) {
-                clearTimeout(scanner);
-                scanner = null;
-                adapter.stopScan();
-            }
-            resolve();
+          if (scanning) {
+              adapter.stopScan();
+          }
+          clearTimeout(scanner);
+          clearInterval(removeTimedoutDevicesInterval);
+          scanner = null;
+          removeTimedoutDevicesInterval = null;
+          scanning = false;
+          resolve();
         });
     }
 

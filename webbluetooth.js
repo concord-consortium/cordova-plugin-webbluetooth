@@ -935,6 +935,7 @@
 
   adapter.scanLoopTimeout = null;
   adapter.stopScanLoop = function (callback) {
+    console.log("Stopping scan loop");
     clearTimeout(adapter.scanLoopTimeout);
     if (callback) callback();
   }
@@ -948,11 +949,14 @@
     )
   {
     init(function () {
-      const scan = function (uuid, serviceUUIDs) {
-        console.log("Scanning for " + serviceUUIDS ? serviceUUIDs : [uuid]);
+      console.log("init called", serviceUUIDs);
+
+      const scan = function (idx) {
+        const scanIDs = idx > -1 ? [serviceUUIDs[idx]] : serviceUUIDs;
+        console.log("Scanning for " + scanIDs);
         evothings.ble.stopScan();
         evothings.ble.startScan(
-          serviceUUIDS ? serviceUUIDs : [uuid],
+          scanIDs,
           function (deviceInfo) {
             adapter.stopScanLoop();
             if (foundFn) { foundFn(createBleatDeviceObject(deviceInfo)); }
@@ -964,15 +968,18 @@
         if (completeFn) { completeFn(); }
       }
       const scanLoop = function (idx) {
-        scan(serviceUUIDs[idx]);
+        console.log("Loop idx: " + idx + " has UUID: " + serviceUUIDs[idx]);
+        scan(idx);
         adapter.scanLoopTimeout = setTimeout(function () {
-          scan((idx + 1) % serviceUUIDs.length);
+          scanLoop((idx + 1) % serviceUUIDs.length);
         }, 250);
       }
       if (serviceUUIDs.length > 1 && (device.platform === "Android")) {
+        console.log("scanning first UUID");
         scanLoop(0);
       } else {
-        scan(serviceUUIDs[0], serviceUUIDs);
+        console.log("scanning all UUIDs");
+        scan(-1);
       }
     });
   };

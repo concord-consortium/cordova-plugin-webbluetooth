@@ -935,8 +935,9 @@
 
   adapter.scanLoopTimeout = null;
   adapter.stopScanLoop = function (callback) {
-    console.log("Stopping scan loop");
-    clearTimeout(adapter.scanLoopTimeout);
+    if (adapter.scanLoopTimeout) {
+      clearTimeout(adapter.scanLoopTimeout);
+    }
     if (callback) callback();
   }
 
@@ -949,7 +950,7 @@
     )
   {
     init(function () {
-      console.log("init called for android? " + platformIsAndroid(), serviceUUIDs);
+      let loopIdx = 0;
 
       const scan = function (idx) {
         const scanIDs = idx > -1 ? [serviceUUIDs[idx]] : serviceUUIDs;
@@ -968,24 +969,20 @@
         if (completeFn) { completeFn(); }
       };
 
-      const scanLoop = function (idx) {
-        console.log("Loop idx: " + idx + " has UUID: " + serviceUUIDs[idx]);
-        scan(idx);
+      const scanLoop = function () {
+        scan(loopIdx);
         adapter.scanLoopTimeout = setTimeout(function () {
-          scanLoop((idx + 1) % serviceUUIDs.length);
+          loopIdx = (loopIdx + 1) % serviceUUIDs.length;
+          scanLoop();
         }, 2000);
+
       };
 
-      // Scan each uuid in turn, starting with the first
-      scanLoop(0);
-
-      // if (serviceUUIDs.length > 1 && (device.platform === "Android")) {
-      //   console.log("scanning first UUID");
-      //   scanLoop(0);
-      // } else {
-      //   console.log("scanning all UUIDs");
-      //   scan(-1);
-      // }
+      if (platformIsAndroid() && serviceUUIDs.length > 1) {
+        scanLoop();
+      } else {
+        scan(-1);
+      }
     });
   };
 

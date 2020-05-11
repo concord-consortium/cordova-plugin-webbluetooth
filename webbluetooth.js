@@ -954,7 +954,6 @@
 
       const scan = function (idx) {
         const scanIDs = idx > -1 ? [serviceUUIDs[idx]] : serviceUUIDs;
-        console.log("Scanning for " + scanIDs);
         evothings.ble.stopScan();
         evothings.ble.startScan(
           scanIDs,
@@ -974,7 +973,7 @@
         adapter.scanLoopTimeout = setTimeout(function () {
           loopIdx = (loopIdx + 1) % serviceUUIDs.length;
           scanLoop();
-        }, 2000);
+        }, 1000);
 
       };
 

@@ -949,7 +949,7 @@
     )
   {
     init(function () {
-      console.log("init called", serviceUUIDs);
+      console.log("init called for android? " + platformIsAndroid(), serviceUUIDs);
 
       const scan = function (idx) {
         const scanIDs = idx > -1 ? [serviceUUIDs[idx]] : serviceUUIDs;
@@ -973,7 +973,7 @@
         scan(idx);
         adapter.scanLoopTimeout = setTimeout(function () {
           scanLoop((idx + 1) % serviceUUIDs.length);
-        }, 250);
+        }, 2000);
       };
 
       // Scan each uuid in turn, starting with the first

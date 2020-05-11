@@ -933,6 +933,14 @@
     else document.addEventListener("deviceready", readyFn);
   }
 
+  adapter.scanLoopTimeout = null;
+  adapter.stopScanLoop = function (callback) {
+    if (adapter.scanLoopTimeout) {
+      clearTimeout(adapter.scanLoopTimeout);
+    }
+    if (callback) callback();
+  }
+
   // Begin scanning for devices
   adapter.startScan = function(
     serviceUUIDs, // String[] serviceUUIDs    advertised service UUIDs to restrict results by
@@ -941,17 +949,39 @@
     errorFn     // Function(String errorMsg)  function called if error occurs
     )
   {
-    init(function() {
-      evothings.ble.stopScan();
-      evothings.ble.startScan(
-          serviceUUIDs,
-        function(deviceInfo) {
-          if (foundFn) { foundFn(createBleatDeviceObject(deviceInfo)); }
-        },
-        function(error) {
-          if (errorFn) { errorFn(error); }
-        });
-      if (completeFn) { completeFn(); }
+    init(function () {
+      let loopIdx = 0;
+
+      const scan = function (idx) {
+        const scanIDs = idx > -1 ? [serviceUUIDs[idx]] : serviceUUIDs;
+        evothings.ble.stopScan();
+        evothings.ble.startScan(
+          scanIDs,
+          function (deviceInfo) {
+            adapter.stopScanLoop();
+            if (foundFn) { foundFn(createBleatDeviceObject(deviceInfo)); }
+          },
+          function (error) {
+            adapter.stopScanLoop();
+            if (errorFn) { errorFn(error); }
+          });
+        if (completeFn) { completeFn(); }
+      };
+
+      const scanLoop = function () {
+        scan(loopIdx);
+        adapter.scanLoopTimeout = setTimeout(function () {
+          loopIdx = (loopIdx + 1) % serviceUUIDs.length;
+          scanLoop();
+        }, 1000);
+
+      };
+
+      if (platformIsAndroid() && serviceUUIDs.length > 1) {
+        scanLoop();
+      } else {
+        scan(-1);
+      }
     });
   };
 
@@ -960,8 +990,9 @@
     errorFn     // Function(String errorMsg)  function called if error occurs
     )
   {
-    init(function() {
+    init(function () {
       evothings.ble.stopScan();
+      adapter.stopScanLoop();
     });
   };
 

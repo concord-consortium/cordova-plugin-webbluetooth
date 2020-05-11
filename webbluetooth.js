@@ -966,21 +966,26 @@
             if (errorFn) { errorFn(error); }
           });
         if (completeFn) { completeFn(); }
-      }
+      };
+
       const scanLoop = function (idx) {
         console.log("Loop idx: " + idx + " has UUID: " + serviceUUIDs[idx]);
         scan(idx);
         adapter.scanLoopTimeout = setTimeout(function () {
           scanLoop((idx + 1) % serviceUUIDs.length);
         }, 250);
-      }
-      if (serviceUUIDs.length > 1 && (device.platform === "Android")) {
-        console.log("scanning first UUID");
-        scanLoop(0);
-      } else {
-        console.log("scanning all UUIDs");
-        scan(-1);
-      }
+      };
+
+      // Scan each uuid in turn, starting with the first
+      scanLoop(0);
+
+      // if (serviceUUIDs.length > 1 && (device.platform === "Android")) {
+      //   console.log("scanning first UUID");
+      //   scanLoop(0);
+      // } else {
+      //   console.log("scanning all UUIDs");
+      //   scan(-1);
+      // }
     });
   };
 

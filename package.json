@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-webbluetooth",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "WebBluetooth Plugin",
   "cordova": {
     "id": "cordova-plugin-webbluetooth",

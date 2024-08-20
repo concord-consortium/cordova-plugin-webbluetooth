@@ -606,7 +606,11 @@
     };
     BluetoothRemoteGATTServer.prototype.connect = function() {
         return new Promise(function(resolve, reject) {
-            if (this.connected) return reject("connect error: device already connected");
+            if (this.connected) {
+              // commented out due to Vernier client trying to connect twice
+              // return reject("connect error: device already connected");
+              return resolve(this);
+            }
 
             adapter.connect(this.device._handle, function() {
                 this.connected = true;
